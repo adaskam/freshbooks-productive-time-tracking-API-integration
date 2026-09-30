@@ -20,6 +20,7 @@ import sys
 import time
 from collections import Counter, defaultdict
 from datetime import date, datetime, time as dtime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -69,13 +70,36 @@ class APIError(Exception):
         super().__init__(f"{resp.request.method} {resp.url} -> {resp.status_code}: {resp.text[:500]}")
 
 
+def retry_after_seconds(value, fallback):
+    """Retry-After may be delay-seconds or an HTTP-date; fall back to backoff if unparseable."""
+    if not value:
+        return fallback
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return fallback
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
+
+
 def request_with_retry(session, method, url, max_retries=5, **kwargs):
-    """Retries on rate limiting (429) and server errors with backoff."""
+    """
+    Retries on rate limiting (429) and server errors with backoff.
+    A 5xx on POST is not retried: the server may have created the resource
+    before failing, so retrying could create a duplicate.
+    """
     resp = None
     for attempt in range(max_retries):
         resp = session.request(method, url, timeout=30, **kwargs)
+        if resp.status_code >= 500 and method.upper() == "POST":
+            return resp
         if resp.status_code == 429 or resp.status_code >= 500:
-            wait = float(resp.headers.get("Retry-After", 2 ** attempt))
+            wait = retry_after_seconds(resp.headers.get("Retry-After"), 2 ** attempt)
             log.warning("%s %s returned %s, retrying in %.0fs", method, url, resp.status_code, wait)
             time.sleep(wait)
             continue
