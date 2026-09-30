@@ -1,0 +1,5 @@
+.env
+freshbooks_tokens.json
+sync_state.json
+mapping.json
+*.tmp

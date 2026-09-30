@@ -1,0 +1,13 @@
+{
+  "people": {
+    "123456": "987654"
+  },
+  "default_person_id": null,
+
+  "services": [
+    { "fb_project_id": 111, "fb_service_id": 222, "productive_service_id": "5550001" },
+    { "fb_project_id": 111, "productive_service_id": "5550002" },
+    { "fb_client_id": 333, "productive_service_id": "5550003" }
+  ],
+  "default_service_id": null
+}
