@@ -3,3 +3,4 @@ freshbooks_tokens.json
 sync_state.json
 mapping.json
 *.tmp
+__pycache__/
