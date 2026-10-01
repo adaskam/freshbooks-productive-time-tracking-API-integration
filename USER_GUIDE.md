@@ -7,8 +7,13 @@ FreshBooks.
 Setup takes about 20–30 minutes and is done once. After that, syncing is a single
 command, which you can also schedule to run automatically.
 
+> **Quick start:** do steps 1–4, then run `python3 sync.py setup`. It walks you through
+> steps 5–10 in one go (see [Guided setup](#guided-setup)). The rest of this guide
+> explains each step, if you'd rather do them by hand or want to know what's going on.
+
 **Contents**
 
+- [Guided setup](#guided-setup)
 1. [Before you start](#1-before-you-start)
 2. [Install](#2-install)
 3. [Create a FreshBooks app](#3-create-a-freshbooks-app)
@@ -29,7 +34,9 @@ command, which you can also schedule to run automatically.
 
 You need:
 
-- **Python 3.9 or newer.** Check with `python3 --version`.
+- **Python 3.9 or newer.** Check with `python3 --version`. This guide always uses
+  `python3`. On many Linux systems plain `python` is the old Python 2, which can't
+  run this tool.
 - **A FreshBooks account** that can see the time entries you want to sync.
 - **A Productive.io account** that can create time entries for the people you'll
   sync.
@@ -44,7 +51,8 @@ You need:
 > sudo apt update
 > sudo apt install python3.11 python3.11-venv
 > ```
-> Then use `python3.11` wherever this guide says `python3`.
+> Then use `python3.11` instead of `python3` when you create the virtual
+> environment in step 2. After that, plain `python3` works.
 
 ## 2. Install
 
@@ -53,12 +61,16 @@ From the project folder:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python3 --version
+python3 -m pip install -r requirements.txt
 ```
 
+`python3 --version` should show 3.9 or newer. If it doesn't, delete the `.venv`
+folder and create it again with a newer Python (see step 1).
+
 Run `source .venv/bin/activate` again each time you open a new terminal. While the
-virtual environment is active, `python` refers to the right version, and the rest
-of this guide uses `python`.
+virtual environment is active, `python3` uses the virtual environment's Python and
+the packages you just installed.
 
 ## 3. Create a FreshBooks app
 
@@ -77,6 +89,50 @@ of this guide uses `python`.
 
 > Time entries are created as the people you map in step 8, so the token must
 > belong to someone allowed to log time for them, such as an admin.
+
+## Guided setup
+
+After steps 1–4, with the virtual environment active, run:
+
+```bash
+source .venv/bin/activate   # if not already active
+python3 sync.py setup
+```
+
+It asks questions and does the following:
+
+1. **Settings.** Asks for your FreshBooks and Productive credentials and your
+   timezone, and saves them to `.env`. Secrets aren't shown as you type them.
+2. **FreshBooks login.** Prints the approval link. Paste back the code, or the
+   whole address you were sent to. If your login has several businesses, it asks
+   which one.
+3. **Productive check.** Confirms your token works and loads your people and
+   services.
+4. **Mapping.** Reads the last 30 days of FreshBooks time and asks about each
+   person and project in it, busiest first:
+   - People are matched automatically by email or name when possible; just press
+     Enter to accept.
+   - For projects, it suggests a Productive service whose name, or deal name,
+     matches the FreshBooks project title.
+   - Otherwise, pick from the list by number, or type part of a name to search.
+     Press Enter to skip something you don't want synced.
+
+   Your answers are saved to `mapping.json`.
+5. **Test run.** Shows what a sync would do, without changing anything, then
+   offers to run the real sync for you.
+
+At the end, it prints the command to schedule nightly syncs.
+
+You can run `setup` again at any time, for example after adding new people or
+projects in FreshBooks. It keeps your existing settings, login and mappings, and
+only asks about new ones.
+
+Use `--since` if the last 30 days don't include every project, for example
+`python3 sync.py setup --since 2026-06-01`.
+
+> Setup creates one rule per FreshBooks project. To send different FreshBooks
+> services within one project to different places, edit `mapping.json` afterwards
+> (see step 8).
 
 ## 5. Configure `.env`
 
@@ -102,7 +158,7 @@ Open `.env` and fill it in:
 ## 6. Connect to FreshBooks
 
 ```bash
-python sync.py auth
+python3 sync.py auth
 ```
 
 1. The tool prints a link. Open it in your browser and approve access.
@@ -126,7 +182,7 @@ commands list them.
 **FreshBooks side.** Pick a date range that has typical time entries:
 
 ```bash
-python sync.py discover --since 2026-09-01 --until 2026-09-30
+python3 sync.py discover --since 2026-09-01 --until 2026-09-30
 ```
 
 ```
@@ -145,7 +201,7 @@ Add `--raw` to also print one full entry, which helps you tell which ID is which
 **Productive side:**
 
 ```bash
-python sync.py discover --productive
+python3 sync.py discover --productive
 ```
 
 This lists every Productive person (ID, name, email) and every service (ID,
@@ -202,7 +258,7 @@ A simple setup is often one rule per FreshBooks project.
 ## 9. Do a test run
 
 ```bash
-python sync.py sync --since 2026-09-01 --until 2026-09-30 --dry-run
+python3 sync.py sync --since 2026-09-01 --until 2026-09-30 --dry-run
 ```
 
 A dry run shows what would be created without changing anything in Productive.
@@ -220,13 +276,13 @@ Add `-v` to see why each skipped entry was skipped.
 When the dry run looks right, run the same command without `--dry-run`:
 
 ```bash
-python sync.py sync --since 2026-09-01 --until 2026-09-30
+python3 sync.py sync --since 2026-09-01 --until 2026-09-30
 ```
 
 From now on, a plain
 
 ```bash
-python sync.py sync
+python3 sync.py sync
 ```
 
 syncs the last 7 days. It's safe to run as often as you like:
@@ -248,7 +304,7 @@ syncs the last 7 days. It's safe to run as often as you like:
 **Entries deleted in FreshBooks** aren't removed from Productive unless you ask:
 
 ```bash
-python sync.py sync --delete-missing
+python3 sync.py sync --delete-missing
 ```
 
 This removes Productive entries, within the date range, whose FreshBooks entry no
@@ -261,7 +317,7 @@ To run the sync every night at 2am, run `crontab -e` and add this line (use your
 own paths):
 
 ```
-0 2 * * * cd /path/to/project && .venv/bin/python sync.py sync >> sync.log 2>&1
+0 2 * * * cd /path/to/project && .venv/bin/python3 sync.py sync >> sync.log 2>&1
 ```
 
 Because each run re-checks the last 7 days, entries edited late in FreshBooks are
@@ -272,13 +328,14 @@ especially when new people or projects are added in FreshBooks.
 
 | Command | What it does |
 |---|---|
-| `python sync.py auth` | Connect to FreshBooks (once) |
-| `python sync.py discover [--since D] [--until D] [--raw]` | List FreshBooks IDs and hours |
-| `python sync.py discover --productive` | List Productive people and services |
-| `python sync.py sync [--since D] [--until D]` | Sync entries (default: last 7 days) |
+| `python3 sync.py setup [--since D] [--until D]` | Guided setup: settings, login, mapping and a test run (default: last 30 days) |
+| `python3 sync.py auth` | Connect to FreshBooks (once) |
+| `python3 sync.py discover [--since D] [--until D] [--raw]` | List FreshBooks IDs and hours |
+| `python3 sync.py discover --productive` | List Productive people and services |
+| `python3 sync.py sync [--since D] [--until D]` | Sync entries (default: last 7 days) |
 | `  --dry-run` | Preview only; change nothing |
 | `  --delete-missing` | Also remove entries deleted in FreshBooks |
-| `-v` (before the command, e.g. `python sync.py -v sync`) | Show detailed logs |
+| `-v` (before the command, e.g. `python3 sync.py -v sync`) | Show detailed logs |
 
 Dates are `YYYY-MM-DD`, in your `SYNC_TIMEZONE`, and both ends are included.
 
@@ -299,12 +356,13 @@ Dates are `YYYY-MM-DD`, in your `SYNC_TIMEZONE`, and both ends are included.
 | Message | Fix |
 |---|---|
 | `Missing required environment variable: X` | Fill in `X` in `.env`, and make sure you're running from the project folder |
-| `No FreshBooks tokens found. Run: python sync.py auth` | Run `auth` (step 6) |
+| `No FreshBooks tokens found. Run: python3 sync.py auth` | Run `auth` (step 6) |
 | `... /auth/oauth/token -> 400` or `401` | Your FreshBooks login expired or its token was already used. Run `auth` again |
 | `Set FRESHBOOKS_BUSINESS_ID to one of: ...` | Your login has access to several businesses. Copy the right ID into `.env` |
-| `Mapping file not found` | Create `mapping.json` (step 8) |
-| `Unmapped entry ...` | Add that person or project to `mapping.json` |
-| `ModuleNotFoundError: No module named 'zoneinfo'` | Your Python is older than 3.9 (see step 1) |
+| `Mapping file not found` | Run `python3 sync.py setup`, or create `mapping.json` by hand (step 8) |
+| `Unmapped entry ...` | Run `python3 sync.py setup` again, or add that person or project to `mapping.json` |
+| `SyntaxError: invalid syntax` right at startup | You ran it with Python 2. Use `python3`, not `python` |
+| `ModuleNotFoundError: No module named 'zoneinfo'` | Your Python is older than 3.9. Recreate `.venv` with a newer one (see steps 1–2) |
 | `ModuleNotFoundError: No module named 'requests'` | Activate the virtual environment: `source .venv/bin/activate` |
 | `Failed to sync FreshBooks entry ...: ... 422` | Productive rejected the entry. Usually the person isn't allowed to log time on that service, or the service's budget is closed |
 | `... returned 429, retrying` | Rate limited. The tool waits and retries on its own; no action needed |
